@@ -1,0 +1,112 @@
+# ==============================================================================
+# .gitignore para un proyecto Django moderno
+# ==============================================================================
+
+# Entorno Virtual
+# ------------------------------------------------------------------------------
+# Ignora la carpeta del entorno virtual donde se instalan los paquetes.
+venv/
+.venv/
+env/
+.env/
+env.bak/
+venv.bak/
+
+
+# Variables de Entorno
+# ------------------------------------------------------------------------------
+# ¡CRÍTICO! Nunca subas tus secretos (API keys, contraseñas de DB) a Git.
+.env
+.env.*
+!.env.example
+
+
+# Archivos de Base de Datos
+# ------------------------------------------------------------------------------
+# Ignora las bases de datos locales de desarrollo.
+*.sqlite3
+*.sqlite3-journal
+db.sqlite3
+
+
+# Archivos de Django
+# ------------------------------------------------------------------------------
+# Archivos estáticos y de medios generados. La carpeta 'staticfiles' es creada
+# por el comando 'collectstatic' y no debe estar en el control de versiones.
+staticfiles/
+media/
+
+# Archivo de configuraciones locales que sobreescribe 'settings.py'.
+local_settings.py
+
+
+# Archivos de Python
+# ------------------------------------------------------------------------------
+# Caché de Python, archivos compilados y de optimización.
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyz
+*.pyw
+
+# Archivos de instalación y distribución de paquetes.
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+
+# Archivos de IDEs y Editores
+# ------------------------------------------------------------------------------
+# Visual Studio Code
+.vscode/
+.history/
+
+# PyCharm
+.idea/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Otros
+.project
+.settings
+.tmproj
+
+
+# Pruebas y Cobertura
+# ------------------------------------------------------------------------------
+# Reportes de cobertura de pruebas.
+.coverage
+.coverage.*
+htmlcov/
+pytest_cache/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+
+
+# Archivos de Sistema Operativo
+# ------------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+
+
+# Logs y Archivos Temporales
+# ------------------------------------------------------------------------------
+*.log
+*.log.*
+*.tmp
+*.swp
+*.swo
