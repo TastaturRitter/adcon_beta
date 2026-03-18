@@ -1,39 +1,31 @@
 """
-Modelos de especialización para Persona Física dentro del sistema Adcon.
+Modelo de Persona Física para el app de parties de Adcon.
 
-Implementa el patrón de herencia concreta 1:1 con la tabla 'partes'.
-Contiene los datos exclusivos de una persona física: datos personales,
-identificaciones fiscales (RFC, CURP) y fecha de nacimiento.
+Extiende la información de una Parte para individuos humanos.
 """
 
 from django.db import models
+from .parte import Parte
 
 
 class PersonaFisica(models.Model):
     """
-    Perfil de datos exclusivo para personas físicas (seres humanos)
-    que participan como partes en los instrumentos del sistema.
+    Representa a una persona humana dentro del sistema.
 
-    Relación 1:1 con Parte — comparte la misma PK que la parte base.
-    Se accede vía: parte.personafisica
-
-    Mapea la tabla SQL: personas_fisicas
+    Mapea la tabla SQL: personas_fisicas.
+    Relación 1:1 con el modelo base Parte.
     """
 
     parte = models.OneToOneField(
-        'parties.Parte',
+        Parte,
         on_delete=models.CASCADE,
         primary_key=True,
-        related_name='personafisica',
+        related_name='persona_fisica',
         verbose_name='Parte Base',
-        help_text='Registro base en la tabla partes al que pertenece este perfil.',
     )
-
-    # ── DATOS PERSONALES ──────────────────────────────────────────────────────
     nombre = models.CharField(
         max_length=100,
         verbose_name='Nombre(s)',
-        help_text='Nombre o nombres de pila de la persona física.',
     )
     apellido_paterno = models.CharField(
         max_length=100,
@@ -45,23 +37,19 @@ class PersonaFisica(models.Model):
         blank=True,
         verbose_name='Apellido Materno',
     )
-
-    # ── IDENTIFICACIÓN ────────────────────────────────────────────────────────
     rfc = models.CharField(
         max_length=13,
+        unique=True,
         null=True,
         blank=True,
-        unique=True,
         verbose_name='RFC',
-        help_text='Registro Federal de Contribuyentes (13 caracteres para persona física).',
     )
     curp = models.CharField(
         max_length=18,
+        unique=True,
         null=True,
         blank=True,
-        unique=True,
         verbose_name='CURP',
-        help_text='Clave Única de Registro de Población (18 caracteres).',
     )
     fecha_nacimiento = models.DateField(
         null=True,
@@ -79,6 +67,7 @@ class PersonaFisica(models.Model):
         db_table = 'personas_fisicas'
         verbose_name = 'Persona Física'
         verbose_name_plural = 'Personas Físicas'
+        ordering = ['apellido_paterno', 'apellido_materno', 'nombre']
 
     def __str__(self) -> str:
-        return f'{self.nombre} {self.apellido_paterno} {self.apellido_materno or ""}'.strip()
+        return f"{self.nombre} {self.apellido_paterno} {self.apellido_materno or ''}".strip()

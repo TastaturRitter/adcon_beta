@@ -1,6 +1,6 @@
 from .parte import Parte
 from .persona_fisica import PersonaFisica
 from .persona_moral import PersonaMoral
-from .asociados import Sucursal, AccionistaSocio
+from .sucursal import Sucursal
 
-__all__ = ['Parte', 'PersonaFisica', 'PersonaMoral', 'Sucursal', 'AccionistaSocio']
+__all__ = ['Parte', 'PersonaFisica', 'PersonaMoral', 'Sucursal']

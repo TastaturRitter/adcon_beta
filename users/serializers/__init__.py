@@ -1,3 +1,3 @@
-from .user import UserReadSerializer, UserWriteSerializer, ChangePasswordSerializer
+from .auth import AdconTokenObtainPairSerializer
 
-__all__ = ['UserReadSerializer', 'UserWriteSerializer', 'ChangePasswordSerializer']
+__all__ = ['AdconTokenObtainPairSerializer']
