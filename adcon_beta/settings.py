@@ -107,6 +107,36 @@ DATABASES = {
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Django REST Framework — Configuración global de la API
+#
+# Piso de seguridad mínimo: todas las vistas requieren autenticación.
+# Los permisos granulares RBAC se aplican por viewset vía AdconBasePermission.
+# JWT se configurará en un sprint posterior cuando se implemente el flujo completo.
+# ─────────────────────────────────────────────────────────────────────────────
+REST_FRAMEWORK = {
+    # Esquemas de autenticación disponibles para la API
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',   # sesión de Django (Browsable API)
+        'rest_framework.authentication.BasicAuthentication',     # HTTP Basic (desarrollo/Postman)
+    ],
+    # Piso mínimo global: solo usuarios autenticados.
+    # Los permisos granulares RBAC (AdconBasePermission, AdminOnlyPermission)
+    # se aplican directamente en cada ViewSet para evitar importaciones circulares.
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    # Paginación por defecto
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 50,
+    # Formatos de respuesta soportados
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',  # desactivar en producción
+    ],
+}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Almacenamiento en AWS S3 — Documentos legales y activos multimedia de Adcon
 #
 # Política de seguridad obligatoria:

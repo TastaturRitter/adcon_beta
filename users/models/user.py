@@ -1,14 +1,13 @@
 """
 Modelo de usuario personalizado del sistema Adcon.
 
-Extiende AbstractUser de Django para mantener compatibilidad total con
-el sistema de autenticación, sesiones y administración estándar, mientras
-agrega los campos específicos requeridos por el Control de Acceso Basado
-en Roles (RBAC) del ecosistema CLM.
+Extiende AbstractUser para mantener compatibilidad total con el sistema
+de autenticación estándar de Django, añadiendo un campo `role` que
+implementa el Control de Acceso Basado en Roles (RBAC) del CLM.
 
-Regla de seguridad: Este modelo es la fuente de verdad de identidad del sistema.
-Toda operación de escritura queda vinculada a una instancia de este modelo
-en la tabla historial_registros (patrón Maker-Checker).
+Regla de seguridad: Este modelo es la fuente de verdad de identidad.
+Toda operación de escritura queda auditada en historial_registros con
+referencia al usuario que la ejecutó (patrón Maker-Checker).
 """
 
 from django.db import models
@@ -17,31 +16,54 @@ from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
     """
-    Usuario del sistema Adcon.
+    Usuario del sistema Adcon con RBAC de cuatro niveles.
 
-    Hereda de AbstractUser los campos estándar de Django:
-    username, email, first_name, last_name, password,
-    is_staff, is_active, is_superuser, date_joined, last_login.
+    Los cuatro roles mapean a los siguientes niveles de acceso jurídico-operativo:
 
-    Se agregan campos específicos del negocio para soportar:
-    - Identificación fiscal (RFC) del operador.
-    - Contacto telefónico para soporte y notificaciones.
-    - Rol de sistema para RBAC de alto nivel.
-    - Marca de tiempo de última actualización del perfil.
+    ADMIN   → Administrador del sistema. Acceso total (CRUD) sobre todos los
+              recursos, incluyendo la gestión de usuarios. Equivale a is_superuser
+              a nivel de negocio. Reservado para el equipo de TI/Legal senior.
+
+    MANAGER → Gestor de contratos. Acceso CRUD completo sobre todos los registros
+              de negocio (instrumentos, partes, documentos, activos, etc.).
+              No puede gestionar usuarios ni cambiar la configuración del sistema.
+
+    EDITOR  → Editor. Puede consultar y editar registros existentes (GET, PATCH, PUT)
+              pero NO puede crear nuevos contratos ni eliminar registros.
+              Perfil para analistas jurídicos en revisión de expedientes.
+
+    READER  → Lector. Acceso de solo lectura (GET) a todos los recursos públicos.
+              Perfil para auditores externos, comités de revisión y consultas.
+
+    Hereda de AbstractUser los campos: username, email, first_name, last_name,
+    password, is_staff, is_active, is_superuser, date_joined, last_login.
     """
 
-    class RolSistema(models.TextChoices):
+    class Role(models.TextChoices):
         """
-        Roles de alto nivel que determinan el nivel de acceso
-        del usuario dentro de la plataforma Adcon.
+        Enumeración de roles del sistema RBAC de Adcon.
 
-        Estos roles complementan el sistema de permisos granulares
-        de Django (is_staff / is_superuser / groups).
+        El valor de la base de datos (izquierda) es el que se persiste.
+        La etiqueta (derecha) es la representación legible para la UI.
         """
-        ADMINISTRADOR = 'ADMIN',     'Administrador'
-        GESTOR        = 'GESTOR',    'Gestor de Contratos'
-        REVISOR       = 'REVISOR',   'Revisor / Auditor'
-        CONSULTOR     = 'CONSULTOR', 'Consultor (Solo Lectura)'
+        ADMIN   = 'ADMIN',   'Administrador'
+        MANAGER = 'MANAGER', 'Gestor de Contratos'
+        EDITOR  = 'EDITOR',  'Editor'
+        READER  = 'READER',  'Lector (Solo Lectura)'
+
+    # ── RBAC PRINCIPAL ────────────────────────────────────────────────────────
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        default=Role.READER,
+        verbose_name='Rol en el Sistema',
+        db_index=True,
+        help_text=(
+            'Define el nivel de acceso del usuario en la plataforma Adcon. '
+            'ADMIN: acceso total. MANAGER: CRUD en negocio. '
+            'EDITOR: consulta y edición. READER: solo lectura.'
+        ),
+    )
 
     # ── IDENTIFICACIÓN FISCAL ─────────────────────────────────────────────────
     rfc = models.CharField(
@@ -50,7 +72,7 @@ class User(AbstractUser):
         blank=True,
         unique=True,
         verbose_name='RFC',
-        help_text='Registro Federal de Contribuyentes del operador. Opcional pero único si se captura.',
+        help_text='Registro Federal de Contribuyentes del operador. Único si se captura.',
     )
 
     # ── CONTACTO ──────────────────────────────────────────────────────────────
@@ -62,23 +84,10 @@ class User(AbstractUser):
         help_text='Número de contacto para soporte y notificaciones urgentes.',
     )
 
-    # ── RBAC DE ALTO NIVEL ────────────────────────────────────────────────────
-    rol_sistema = models.CharField(
-        max_length=20,
-        choices=RolSistema.choices,
-        default=RolSistema.CONSULTOR,
-        verbose_name='Rol en el Sistema',
-        help_text=(
-            'Define el nivel de acceso global del usuario en Adcon. '
-            'El permiso granular se gestiona mediante Groups de Django.'
-        ),
-    )
-
     # ── AUDITORÍA DE PERFIL ───────────────────────────────────────────────────
     fecha_actualizacion = models.DateTimeField(
         auto_now=True,
         verbose_name='Última Actualización del Perfil',
-        help_text='Se actualiza automáticamente cada vez que se modifica el registro del usuario.',
     )
 
     class Meta:
@@ -92,18 +101,30 @@ class User(AbstractUser):
         nombre_completo = self.get_full_name()
         return nombre_completo if nombre_completo else self.username
 
+    # ── PROPIEDADES DE CONVENIENCIA RBAC ──────────────────────────────────────
+
     @property
     def es_administrador(self) -> bool:
-        """Verifica si el usuario tiene rol de administrador del sistema."""
-        return self.rol_sistema == self.RolSistema.ADMINISTRADOR
+        """True si el rol del usuario es ADMIN (acceso total al sistema)."""
+        return self.role == self.Role.ADMIN
+
+    @property
+    def es_gestor(self) -> bool:
+        """True si el rol permite CRUD completo sobre registros de negocio."""
+        return self.role in (self.Role.ADMIN, self.Role.MANAGER)
 
     @property
     def puede_escribir(self) -> bool:
         """
-        Verifica si el usuario tiene permisos para crear o modificar registros.
-        Los roles CONSULTOR y REVISOR son de solo lectura a nivel de negocio.
+        True si el usuario puede crear o eliminar registros.
+        Solo ADMIN y MANAGER tienen permiso de escritura destructiva.
         """
-        return self.rol_sistema in (
-            self.RolSistema.ADMINISTRADOR,
-            self.RolSistema.GESTOR,
-        )
+        return self.role in (self.Role.ADMIN, self.Role.MANAGER)
+
+    @property
+    def puede_editar(self) -> bool:
+        """
+        True si el usuario puede modificar registros existentes (PATCH/PUT).
+        Incluye ADMIN, MANAGER y EDITOR. Excluye READER.
+        """
+        return self.role in (self.Role.ADMIN, self.Role.MANAGER, self.Role.EDITOR)
